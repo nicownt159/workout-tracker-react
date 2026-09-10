@@ -1,0 +1,459 @@
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --border-2: #d9d8dc;
+  --code-bg: #f4f3ec;
+  --surface-1: #faf9f6;
+  --surface-2: #f4f3ec;
+  --surface-3: #edece5;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger-border: rgba(220, 38, 38, 0.4);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --bar-shadow: rgba(0, 0, 0, 0.08) 0 -8px 24px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --border-2: #3d3f4d;
+    --code-bg: #1f2028;
+    --surface-1: #1b1c24;
+    --surface-2: #242630;
+    --surface-3: #2d2f3b;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.12);
+    --danger-border: rgba(248, 113, 113, 0.45);
+    --social-bg: rgba(47, 48, 58, 0.5);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --bar-shadow: rgba(0, 0, 0, 0.45) 0 -8px 24px;
+  }
+
+  #social .button-icon {
+    filter: invert(1) brightness(2);
+  }
+}
+
+body {
+  margin: 0;
+}
+
+/*
+  The app root is a two column grid. Every child spans the full width except
+  the add-session input and its button, which share one row.
+*/
+#root {
+  width: 1126px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  border-inline: 1px solid var(--border);
+  min-height: 100svh;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 12px;
+  padding: 0 24px 104px;
+
+  @media (max-width: 1024px) {
+    padding: 0 16px 104px;
+  }
+  @media (max-width: 480px) {
+    padding-bottom: 144px;
+  }
+}
+
+#root > :not(.field, .btn-add, .rest-timer) {
+  grid-column: 1 / -1;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  margin: 32px 0;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+h2 {
+  font-size: 24px;
+  line-height: 118%;
+  letter-spacing: -0.24px;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Cards: three nesting levels                                            */
+/* Session (level 1) > Exercise (level 2) > Set (level 3)                 */
+/* Each level gets a lighter surface, its own border and extra indent.    */
+/* ---------------------------------------------------------------------- */
+
+.session-card,
+.exercise-card,
+.set-row {
+  position: relative;
+  box-sizing: border-box;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.session-card,
+.exercise-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+/* Children of a card span the full width unless they are form controls */
+.session-card > :not(.field, .btn-add, .btn-delete),
+.exercise-card > :not(.field, .btn-add, .btn-delete) {
+  grid-column: 1 / -1;
+}
+
+/* Level 1: session */
+.session-card {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+}
+
+.session-card:not(.active):hover {
+  border-color: var(--accent-border);
+}
+
+.session-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+  cursor: default;
+}
+
+/* Level 2: exercise */
+.exercise-card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-left: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-2);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background-color: var(--surface-2);
+}
+
+.exercise-card:not(.active):hover {
+  border-color: var(--accent-border);
+}
+
+.exercise-card.active {
+  border-color: var(--accent-border);
+  border-left-color: var(--accent);
+  background-image: linear-gradient(var(--accent-bg), var(--accent-bg));
+  cursor: default;
+}
+
+/* Level 3: set */
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-left: 12px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+
+/* Titles and labels */
+
+.card-title {
+  margin: 0;
+  padding-right: 36px;
+  font: 500 18px/1.3 var(--heading);
+  letter-spacing: -0.2px;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.exercise-card > .card-title {
+  font-size: 16px;
+}
+
+.session-card.active > .card-title,
+.exercise-card.active > .card-title {
+  color: var(--accent);
+}
+
+.section-title {
+  margin: 6px 0 0;
+  font: 600 12px/1.2 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.set-label {
+  margin: 0;
+  min-width: 0;
+  font: 500 15px/1.3 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+/* Form controls */
+
+.field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  font: 15px/1.3 var(--sans);
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.field::placeholder {
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.btn {
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 14px;
+  font: 500 15px/1.3 var(--sans);
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--accent-border);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible,
+.btn-delete:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-add {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.btn-add:hover {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Small X button in the top right corner of a card */
+.btn-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font: 600 12px/1 var(--sans);
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn-delete:hover {
+  opacity: 1;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+/* Set rows are a single line, so the X sits inline at the right end */
+.set-row > .btn-delete {
+  position: static;
+  flex: 0 0 auto;
+}
+
+/* Rest timer: fixed bar at the bottom, aligned with the app column */
+
+.rest-timer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: min(1126px, 100%);
+  margin-inline: auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
+  text-align: left;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border);
+  border-inline: 1px solid var(--border);
+  box-shadow: var(--bar-shadow);
+}
+
+.rest-timer-display {
+  margin: 0 auto 0 0;
+  min-width: 5ch;
+  font: 600 28px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  color: var(--text-h);
+}
+
+.btn-stop {
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.btn-stop:hover {
+  color: var(--bg);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Responsive tweaks */
+
+@media (max-width: 1024px) {
+  .session-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+  .exercise-card {
+    margin-left: 8px;
+    padding: 10px 12px;
+  }
+  .set-row {
+    margin-left: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Weight and reps share a row, the add button drops below them */
+  .exercise-card {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .exercise-card > .btn-add {
+    grid-column: 1 / -1;
+  }
+
+  /* Timer display on its own line, buttons in one row below it */
+  .rest-timer {
+    flex-wrap: wrap;
+    padding-inline: 16px;
+  }
+  .rest-timer-display {
+    flex-basis: 100%;
+    margin: 0 0 2px;
+    text-align: center;
+  }
+  .rest-timer .btn {
+    flex: 1 1 0;
+    padding-inline: 8px;
+  }
+}
