@@ -3,13 +3,7 @@ import SessionCard from './SessionCard';
 import RestTimer from './RestTimer';
 
 function App() {
-  const [sessions, setSessions] = useState(() => {
-    const saved = localStorage.getItem("sessions");
-    if (saved === null) {
-      return []
-    }
-    return JSON.parse(saved);
-  })
+  const [sessions, setSessions] = useState([])
 
   const [typeInput, setTypeInput] = useState("");
 
@@ -17,9 +11,32 @@ function App() {
 
   const [currentExerciseId, setCurrentExerciseId] = useState(null);
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
-    localStorage.setItem("sessions", JSON.stringify(sessions));
-  }, [sessions]);
+    async function loadSessions() {
+      const response = await fetch("http://localhost:3000/sessions");
+      const data = await response.json();
+
+      setSessions(data);
+      setIsLoaded(true);
+    }
+    loadSessions();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+    async function saveSessions() {
+      await fetch("http://localhost:3000/sessions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sessions)
+      });
+    }
+    saveSessions();
+  }, [sessions, isLoaded]);
 
   function handleAddSession() {
     if (typeInput.trim() === "") {
