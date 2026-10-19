@@ -38,16 +38,16 @@ function App() {
     saveSessions();
   }, [sessions, isLoaded]);
 
-  function handleAddSession() {
+  async function handleAddSession() {
     if (typeInput.trim() === "") {
       return
     }
-    const newSession = {
-      id: Date.now(),
-      type: typeInput,
-      date: new Date().toISOString().slice(0, 10),
-      exercises: []
-    };
+    const response = await fetch("http://localhost:3000/sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({type: typeInput})
+    });
+    const newSession = await response.json()
     setSessions([...sessions, newSession]);
     setTypeInput("");
   }
