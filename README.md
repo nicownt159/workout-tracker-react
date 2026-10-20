@@ -18,7 +18,7 @@ workout-tracker-react/
 └── server/   Express API (Node, Express 5, ES modules)
 ```
 
-- `client/` contains the React app. `App.jsx` holds the sessions state, loads it from the API on mount and sends it back whenever it changes.
+- `client/` contains the React app. `App.jsx` holds the sessions state, loads it from the API with `GET /sessions` on mount and calls a dedicated route for every action (adding or deleting a session, exercise or set).
 - `server/` contains `server.js`, a small Express API that keeps the sessions in memory and writes them to `sessions.json`.
 
 Frontend and server are separate projects with their own `package.json` and have to run at the same time.
@@ -40,23 +40,29 @@ Frontend and server are separate projects with their own `package.json` and have
 ## How it works
 
 - On startup the client fetches all sessions with `GET /sessions`
-- Every change to the sessions state (adding or deleting a session, exercise or set) sends the complete array back with `PUT /sessions`
-- The save effect only runs after the initial load has finished (`isLoaded` flag), so the empty initial state never overwrites the stored data
-- The server keeps the sessions in memory, writes them to `sessions.json` on every `PUT` and reads that file back in on startup
+- Every handler in the client (adding or deleting a session, exercise or set) calls its own route and updates the React state once the server has answered
+- When adding something, the client sends only the new values (`type`, `name` or `weight` and `reps`). The server assigns the `id` (and the `date` for sessions) and responds with the new object, which the client inserts into the state
+- When deleting something, the server responds with `204 No Content` and the client removes the item from the state
+- The server keeps the sessions in memory, writes them to `sessions.json` after every `POST` and `DELETE` and reads that file back in on startup
 
 ## API
 
 The server runs on `http://localhost:3000`.
 
-| Method | Route       | Description                                                                 |
-| ------ | ----------- | --------------------------------------------------------------------------- |
-| GET    | `/`         | Returns a short text to check that the server is running                    |
-| GET    | `/sessions` | Returns all sessions as a JSON array                                        |
-| PUT    | `/sessions` | Replaces the complete sessions array with the JSON request body and returns it |
+| Method | Route                                                    | Body                | Description                                                                  |
+| ------ | -------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| GET    | `/`                                                      |                     | Returns a short text to check that the server is running                     |
+| GET    | `/sessions`                                              |                     | Returns all sessions as a JSON array                                         |
+| POST   | `/sessions`                                              | `{ type }`          | Creates a session, the server assigns `id` and `date`, returns the new session |
+| DELETE | `/sessions/:id`                                          |                     | Deletes a session, responds with `204`                                       |
+| POST   | `/sessions/:sessionId/exercises`                         | `{ name }`          | Creates an exercise in the session, returns the new exercise                 |
+| DELETE | `/sessions/:sessionId/exercises/:exerciseId`             |                     | Deletes an exercise, responds with `204`                                     |
+| POST   | `/sessions/:sessionId/exercises/:exerciseId/sets`        | `{ weight, reps }`  | Creates a set in the exercise, returns the new set                           |
+| DELETE | `/sessions/:sessionId/exercises/:exerciseId/sets/:setId` |                     | Deletes a set, responds with `204`                                           |
 
 ## Data storage
 
-The sessions are stored in `server/sessions.json`. The file is created automatically the first time the client saves, and it is listed in `server/.gitignore`, so it is not committed. The server reads and writes the file relative to its working directory, so start it from inside the `server` folder.
+The sessions are stored in `server/sessions.json`. The file is created automatically the first time a session is created, and it is listed in `server/.gitignore`, so it is not committed. The server reads and writes the file relative to its working directory, so start it from inside the `server` folder.
 
 Data structure:
 
@@ -91,8 +97,9 @@ Data structure:
 - Immutable updates of nested state
 - Event propagation and stopPropagation
 - useEffect with cleanup (interval-based timer)
-- Fetching data in useEffect and syncing state back to a server
-- Guarding the save effect with a loaded flag so the initial empty state does not overwrite the stored data
+- Fetching data in useEffect and updating the state with the server's response
+- Designing REST routes with route parameters (`req.params`), HTTP methods (GET, POST, DELETE) and status codes (`204 No Content`)
+- Debugging requests in the Network tab of the browser DevTools
 - Setting up a small Express API with JSON body parsing, CORS and file-based persistence
 
 ## How to run locally
