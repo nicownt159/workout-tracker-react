@@ -77,7 +77,10 @@ function App() {
     ));
   }
 
-  function handleDeleteExercise(sessionId, exerciseId) {
+  async function handleDeleteExercise(sessionId, exerciseId) {
+    await fetch(`http://localhost:3000/sessions/${sessionId}/exercises/${exerciseId}`, {
+      method: "DELETE"
+    });
     const targetSession = sessions.find(s => s.id === sessionId);
     const remainingExercises = targetSession.exercises.filter(exercise => exercise.id !== exerciseId)
     setSessions(sessions.map(session => 
