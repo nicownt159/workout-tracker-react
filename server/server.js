@@ -33,6 +33,19 @@ app.delete("/sessions/:id", (req, res) => {
     res.sendStatus(204);
 });
 
+app.post("/sessions/:sessionId/exercises", (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    const newExercise = {
+        id: Date.now(),
+        name: req.body.name,
+        sets: []
+    }
+    session.exercises.push(newExercise);
+    fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2));
+    res.json(newExercise);
+});
+
 let sessions = [];
 if (fs.existsSync("sessions.json")) {
     sessions = JSON.parse(fs.readFileSync("sessions.json", "utf8"));

@@ -63,8 +63,13 @@ function App() {
     setCurrentSessionId(id)
   }
 
-  function handleAddExercise(sessionId, name) {
-    const newExercise = { id: Date.now(), name: name, sets: [] };
+  async function handleAddExercise(sessionId, name) {
+    const response = await fetch(`http://localhost:3000/sessions/${sessionId}/exercises`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: name })
+    })
+    const newExercise = await response.json();
     setSessions(sessions.map(session =>
       session.id === sessionId
         ? {...session, exercises: [...session.exercises, newExercise] }
