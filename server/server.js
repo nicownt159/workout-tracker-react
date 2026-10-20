@@ -8,12 +8,6 @@ const PORT = 3000;
 app.use(express.json());
 app.use(cors());
 
-app.put("/sessions", (req, res) => {
-    sessions = req.body;
-    fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2));
-    res.json(sessions);
-})
-
 app.post("/sessions", (req, res) => {
     const newSession = {
         id: Date.now(),
@@ -68,6 +62,17 @@ app.post("/sessions/:sessionId/exercises/:exerciseId/sets", (req, res) => {
     exercise.sets.push(newSet);
     fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2));
     res.json(newSet);
+});
+
+app.delete("/sessions/:sessionId/exercises/:exerciseId/sets/:setId", (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    const exerciseId = Number(req.params.exerciseId);
+    const exercise = session.exercises.find(e => e.id === exerciseId);
+    const setId = Number(req.params.setId);
+    exercise.sets = exercise.sets.filter(set => set.id !== setId);
+    fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2))
+    res.sendStatus(204)
 })
 
 let sessions = [];

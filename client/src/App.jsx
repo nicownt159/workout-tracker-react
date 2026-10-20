@@ -11,32 +11,15 @@ function App() {
 
   const [currentExerciseId, setCurrentExerciseId] = useState(null);
 
-  const [isLoaded, setIsLoaded] = useState(false);
-
   useEffect(() => {
     async function loadSessions() {
       const response = await fetch("http://localhost:3000/sessions");
       const data = await response.json();
 
       setSessions(data);
-      setIsLoaded(true);
     }
     loadSessions();
   }, []);
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-    async function saveSessions() {
-      await fetch("http://localhost:3000/sessions", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sessions)
-      });
-    }
-    saveSessions();
-  }, [sessions, isLoaded]);
 
   async function handleAddSession() {
     if (typeInput.trim() === "") {
@@ -114,7 +97,10 @@ function App() {
     ))
   }
 
-  function handleDeleteSet(exerciseId, setId) {
+  async function handleDeleteSet(exerciseId, setId) {
+    await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets/${setId}`, {
+      method: "DELETE"
+    });
     const targetSession = sessions.find(s => s.id === currentSessionId);
     const updatedExercises = targetSession.exercises.map(e => 
       e.id === exerciseId
