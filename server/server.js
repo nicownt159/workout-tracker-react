@@ -55,6 +55,21 @@ app.delete("/sessions/:sessionId/exercises/:exerciseId", (req, res) => {
     res.sendStatus(204)
 });
 
+app.post("/sessions/:sessionId/exercises/:exerciseId/sets", (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    const exerciseId = Number(req.params.exerciseId);
+    const exercise = session.exercises.find(e => e.id === exerciseId);
+    const newSet = {
+        id: Date.now(),
+        weight: req.body.weight,
+        reps: req.body.reps
+    }
+    exercise.sets.push(newSet);
+    fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2));
+    res.json(newSet);
+})
+
 let sessions = [];
 if (fs.existsSync("sessions.json")) {
     sessions = JSON.parse(fs.readFileSync("sessions.json", "utf8"));

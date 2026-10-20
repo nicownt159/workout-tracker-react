@@ -94,9 +94,14 @@ function App() {
     setCurrentExerciseId(id);
   }
 
-  function handleAddSet(exerciseId, weight, reps) {
+  async function handleAddSet(exerciseId, weight, reps) {
+    const response = await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets`, {
+      method: "POST",
+      headers: {"content-type":"application/json"},
+      body: JSON.stringify({weight: weight, reps: reps})
+    })
     const targetSession = sessions.find(s => s.id === currentSessionId);
-    const newSet = { id: Date.now(), weight, reps};
+    const newSet = await response.json();
     const updatedExercises = targetSession.exercises.map(exercise =>
       exercise.id === exerciseId
         ? { ...exercise, sets: [...exercise.sets, newSet] }
