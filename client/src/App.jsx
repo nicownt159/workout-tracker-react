@@ -52,7 +52,10 @@ function App() {
     setTypeInput("");
   }
 
-  function handleDeleteSession(id) {
+  async function handleDeleteSession(id) {
+    await fetch(`http://localhost:3000/sessions/${id}`, {
+      method: "DELETE"
+    })
     setSessions(sessions.filter(s => s.id !== id));
   }
 

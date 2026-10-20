@@ -26,6 +26,13 @@ app.post("/sessions", (req, res) => {
     res.json(newSession);
 });
 
+app.delete("/sessions/:id", (req, res) => {
+    const id = Number(req.params.id);
+    sessions = sessions.filter(s => s.id !== id);
+    fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2))
+    res.sendStatus(204);
+});
+
 let sessions = [];
 if (fs.existsSync("sessions.json")) {
     sessions = JSON.parse(fs.readFileSync("sessions.json", "utf8"));
