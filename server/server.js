@@ -9,6 +9,9 @@ app.use(express.json());
 app.use(cors());
 
 app.post("/sessions", (req, res) => {
+    if (!req.body.type || req.body.type.trim() === "") {
+        return res.status(400).json({ error: "Type is required" });
+    }
     const newSession = {
         id: Date.now(),
         type: req.body.type,
@@ -30,6 +33,12 @@ app.delete("/sessions/:id", (req, res) => {
 app.post("/sessions/:sessionId/exercises", (req, res) => {
     const sessionId = Number(req.params.sessionId);
     const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+        return res.status(404).json({ error: "Session not found" })
+    }
+    if(!req.body.name || req.body.name.trim() === "") {
+        return res.status(400).json({ error: "Name is required" });
+    }
     const newExercise = {
         id: Date.now(),
         name: req.body.name,
@@ -43,6 +52,9 @@ app.post("/sessions/:sessionId/exercises", (req, res) => {
 app.delete("/sessions/:sessionId/exercises/:exerciseId", (req, res) => {
     const sessionId = Number(req.params.sessionId);
     const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+        return res.status(404).json({ error: "Session not found" })
+    }
     const exerciseId = Number(req.params.exerciseId);
     session.exercises = session.exercises.filter(e => e.id !== exerciseId);
     fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2))
@@ -52,12 +64,26 @@ app.delete("/sessions/:sessionId/exercises/:exerciseId", (req, res) => {
 app.post("/sessions/:sessionId/exercises/:exerciseId/sets", (req, res) => {
     const sessionId = Number(req.params.sessionId);
     const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+        return res.status(404).json({ error: "Session not found" })
+    }
     const exerciseId = Number(req.params.exerciseId);
     const exercise = session.exercises.find(e => e.id === exerciseId);
+    if (!exercise) {
+        return res.status(404).json({ error: "Exercise not found" })
+    }
+    const weight = Number(req.body.weight);
+    const reps = Number(req.body.reps);
+    if(Number.isNaN(weight) || weight <= 0) {
+        return res.status(400).json({ error: "Weight must be a positive number" });
+    }
+    if(!Number.isInteger(reps) || reps <= 0) {
+        return res.status(400).json({ error: "Reps must be a positive whole number" });
+    }
     const newSet = {
         id: Date.now(),
-        weight: req.body.weight,
-        reps: req.body.reps
+        weight,
+        reps
     }
     exercise.sets.push(newSet);
     fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2));
@@ -67,8 +93,14 @@ app.post("/sessions/:sessionId/exercises/:exerciseId/sets", (req, res) => {
 app.delete("/sessions/:sessionId/exercises/:exerciseId/sets/:setId", (req, res) => {
     const sessionId = Number(req.params.sessionId);
     const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+        return res.status(404).json({ error: "Session not found" })
+    }
     const exerciseId = Number(req.params.exerciseId);
     const exercise = session.exercises.find(e => e.id === exerciseId);
+    if (!exercise) {
+        return res.status(404).json({ error: "Exercise not found" })
+    }
     const setId = Number(req.params.setId);
     exercise.sets = exercise.sets.filter(set => set.id !== setId);
     fs.writeFileSync("sessions.json", JSON.stringify(sessions, null, 2))
