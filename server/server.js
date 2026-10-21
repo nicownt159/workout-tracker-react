@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(cors());
 
 app.post("/sessions", (req, res) => {
-    if (!req.body.type || req.body.type.trim() === "") {
+    if (typeof req.body.type !== "string" || req.body.type.trim() === "") {
         return res.status(400).json({ error: "Type is required" });
     }
     const newSession = {
@@ -36,7 +36,7 @@ app.post("/sessions/:sessionId/exercises", (req, res) => {
     if (!session) {
         return res.status(404).json({ error: "Session not found" })
     }
-    if(!req.body.name || req.body.name.trim() === "") {
+    if(typeof req.body.name !== "string" || req.body.name.trim() === "") {
         return res.status(400).json({ error: "Name is required" });
     }
     const newExercise = {
