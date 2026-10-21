@@ -43,22 +43,44 @@ Frontend and server are separate projects with their own `package.json` and have
 - Every handler in the client (adding or deleting a session, exercise or set) calls its own route and updates the React state once the server has answered
 - When adding something, the client sends only the new values (`type`, `name` or `weight` and `reps`). The server assigns the `id` (and the `date` for sessions) and responds with the new object, which the client inserts into the state
 - When deleting something, the server responds with `204 No Content` and the client removes the item from the state
+- If the server answers with an error status, the client checks `response.ok`, shows the server's error message with `alert` and leaves the state unchanged. This applies to adding a session, exercise or set and to deleting an exercise or set. Deleting a session always gets a `204`, so that handler does not check the response
 - The server keeps the sessions in memory, writes them to `sessions.json` after every `POST` and `DELETE` and reads that file back in on startup
 
 ## API
 
 The server runs on `http://localhost:3000`.
 
-| Method | Route                                                    | Body                | Description                                                                  |
-| ------ | -------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| GET    | `/`                                                      |                     | Returns a short text to check that the server is running                     |
-| GET    | `/sessions`                                              |                     | Returns all sessions as a JSON array                                         |
-| POST   | `/sessions`                                              | `{ type }`          | Creates a session, the server assigns `id` and `date`, returns the new session |
-| DELETE | `/sessions/:id`                                          |                     | Deletes a session, responds with `204`                                       |
-| POST   | `/sessions/:sessionId/exercises`                         | `{ name }`          | Creates an exercise in the session, returns the new exercise                 |
-| DELETE | `/sessions/:sessionId/exercises/:exerciseId`             |                     | Deletes an exercise, responds with `204`                                     |
-| POST   | `/sessions/:sessionId/exercises/:exerciseId/sets`        | `{ weight, reps }`  | Creates a set in the exercise, returns the new set                           |
-| DELETE | `/sessions/:sessionId/exercises/:exerciseId/sets/:setId` |                     | Deletes a set, responds with `204`                                           |
+| Method | Route                                                    | Body                | Description                                                                  | Errors     |
+| ------ | -------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------- | ---------- |
+| GET    | `/`                                                      |                     | Returns a short text to check that the server is running                     |            |
+| GET    | `/sessions`                                              |                     | Returns all sessions as a JSON array                                         |            |
+| POST   | `/sessions`                                              | `{ type }`          | Creates a session, the server assigns `id` and `date`, returns the new session | `400`      |
+| DELETE | `/sessions/:id`                                          |                     | Deletes a session, always responds with `204`                                |            |
+| POST   | `/sessions/:sessionId/exercises`                         | `{ name }`          | Creates an exercise in the session, returns the new exercise                 | `400`, `404` |
+| DELETE | `/sessions/:sessionId/exercises/:exerciseId`             |                     | Deletes an exercise, responds with `204`                                     | `404`      |
+| POST   | `/sessions/:sessionId/exercises/:exerciseId/sets`        | `{ weight, reps }`  | Creates a set in the exercise, returns the new set                           | `400`, `404` |
+| DELETE | `/sessions/:sessionId/exercises/:exerciseId/sets/:setId` |                     | Deletes a set, responds with `204`                                           | `404`      |
+
+- `400 Bad Request`: the body is invalid (see [Validation](#validation))
+- `404 Not Found`: the session or exercise in the route does not exist. The item that is being deleted itself is not checked, so deleting an exercise or set that does not exist still responds with `204`. `DELETE /sessions/:id` never responds with `404`
+
+Error responses are JSON in the format:
+
+```json
+{ "error": "Session not found" }
+```
+
+## Validation
+
+The server does the actual validation. Every `POST` route checks the body before anything is saved:
+
+- `POST /sessions`: `type` must not be missing or empty, otherwise `400` with `Type is required`
+- `POST /sessions/:sessionId/exercises`: `name` must not be missing or empty, otherwise `400` with `Name is required`
+- `POST .../sets`: `weight` must be a positive number and `reps` a positive whole number, otherwise `400` with `Weight must be a positive number` or `Reps must be a positive whole number`. Both are converted with `Number()` and stored as numbers
+
+Routes with a `sessionId` or `exerciseId` check first that the session or exercise exists and respond with `404` if not.
+
+In the frontend, weight and reps are `number` inputs (`min="0.5"`/`step="0.5"` for weight, `min="1"`/`step="1"` for reps), and empty inputs are not sent at all. This is only for convenience: the inputs can still be bypassed, so the server does not rely on them.
 
 ## Data storage
 
@@ -77,7 +99,7 @@ Data structure:
         "id": 1700000000001,
         "name": "Bench Press",
         "sets": [
-          { "id": 1700000000002, "weight": "80", "reps": "8" }
+          { "id": 1700000000002, "weight": 80, "reps": 8 }
         ]
       }
     ]
@@ -87,7 +109,7 @@ Data structure:
 
 - `id` values are timestamps from `Date.now()`
 - `date` is the day the session was created in `YYYY-MM-DD` format
-- `weight` and `reps` are stored as strings, exactly as typed into the inputs
+- `weight` and `reps` are stored as numbers. The server converts them with `Number()` before saving
 
 ## What I learned
 
@@ -101,6 +123,9 @@ Data structure:
 - Designing REST routes with route parameters (`req.params`), HTTP methods (GET, POST, DELETE) and status codes (`204 No Content`)
 - Debugging requests in the Network tab of the browser DevTools
 - Setting up a small Express API with JSON body parsing, CORS and file-based persistence
+- Validating input on the server instead of trusting the frontend
+- Responding with the right HTTP status codes for errors: `400 Bad Request` for invalid input, `404 Not Found` for missing resources
+- Checking `response.ok` in the client, because `fetch` does not throw on error status codes
 
 ## How to run locally
 
