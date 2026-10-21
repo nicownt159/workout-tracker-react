@@ -34,8 +34,22 @@ function ExerciseCard({ exercise, onDelete, isActive, onSelect, onAddSet, onDele
                             onDelete={() => onDeleteSet(exercise.id, set.id)}
                         />
                     ))}
-                    <input className="field" placeholder="Weight (kg)" value={weightInput} onChange={e => setWeightInput(e.target.value)} />
-                    <input className="field" placeholder="Reps" value={repInput} onChange={e => setRepInput(e.target.value)} />
+                    <input 
+                        className="field"
+                        placeholder="Weight (kg)"
+                        value={weightInput}
+                        onChange={e => setWeightInput(e.target.value)}
+                        type="number"
+                        min="0.5"
+                        step="0.5"/>
+                    <input 
+                        className="field"
+                        placeholder="Reps"
+                        value={repInput}
+                        onChange={e => setRepInput(e.target.value)}
+                        type="number"
+                        min="1"
+                        step="1"/>
                     <button className="btn btn-add" onClick={(e) => {
                         e.stopPropagation();
                         handleAddSet();
