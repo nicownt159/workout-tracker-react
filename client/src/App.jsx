@@ -60,7 +60,7 @@ function App() {
     if (!response.ok) {
       const data = await response.json()
       alert(data.error);
-      return;
+      return false;
     }
     const newExercise = await response.json();
     setSessions(sessions.map(session =>
@@ -68,6 +68,7 @@ function App() {
         ? {...session, exercises: [...session.exercises, newExercise] }
         : session
     ));
+    return true;
   }
 
   async function handleDeleteExercise(sessionId, exerciseId) {
@@ -101,7 +102,7 @@ function App() {
     if (!response.ok) {
       const data = await response.json()
       alert(data.error);
-      return;
+      return false;
     }
     const targetSession = sessions.find(s => s.id === currentSessionId);
     const newSet = await response.json();
@@ -115,6 +116,7 @@ function App() {
       ? {...s, exercises: updatedExercises}
       : s
     ))
+    return true;
   }
 
   async function handleDeleteSet(exerciseId, setId) {

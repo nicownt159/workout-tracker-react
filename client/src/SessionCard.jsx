@@ -6,12 +6,14 @@ import { useState } from 'react';
 function SessionCard({ session, isActive, onDelete, onSelect ,onAddExercise, onDeleteExercise, onSelectExercise, currentExerciseId, onAddSet, onDeleteSet }) {
     const [exerciseInput, setExerciseInput] = useState("");
 
-    function handleAddExercise() {
+    async function handleAddExercise() {
         if (exerciseInput.trim() === "") {
             return
         }
-        onAddExercise(session.id, exerciseInput)
-        setExerciseInput("");
+        const success = await onAddExercise(session.id, exerciseInput)
+        if (success) {
+            setExerciseInput("");
+        }
     }
 
     return (

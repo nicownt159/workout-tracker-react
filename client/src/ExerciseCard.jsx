@@ -5,16 +5,18 @@ function ExerciseCard({ exercise, onDelete, isActive, onSelect, onAddSet, onDele
     const [weightInput, setWeightInput] = useState("");
     const [repInput, setRepInput] = useState("");
 
-    function handleAddSet() {
+    async function handleAddSet() {
         if (weightInput.trim() === "") {
             return
         }
         if (repInput.trim() === "") {
             return
         }
-        onAddSet(exercise.id, weightInput, repInput)
-        setWeightInput("");
-        setRepInput("");
+        const success = await onAddSet(exercise.id, weightInput, repInput)
+        if (success) {
+            setWeightInput("");
+            setRepInput("");
+        }
     }
 
     return (
