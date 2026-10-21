@@ -30,6 +30,11 @@ function App() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({type: typeInput})
     });
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.error);
+      return;
+    }
     const newSession = await response.json()
     setSessions([...sessions, newSession]);
     setTypeInput("");
@@ -52,6 +57,11 @@ function App() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name })
     })
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.error);
+      return;
+    }
     const newExercise = await response.json();
     setSessions(sessions.map(session =>
       session.id === sessionId
@@ -61,9 +71,14 @@ function App() {
   }
 
   async function handleDeleteExercise(sessionId, exerciseId) {
-    await fetch(`http://localhost:3000/sessions/${sessionId}/exercises/${exerciseId}`, {
+    const response = await fetch(`http://localhost:3000/sessions/${sessionId}/exercises/${exerciseId}`, {
       method: "DELETE"
     });
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.error);
+      return;
+    }
     const targetSession = sessions.find(s => s.id === sessionId);
     const remainingExercises = targetSession.exercises.filter(exercise => exercise.id !== exerciseId)
     setSessions(sessions.map(session => 
@@ -83,6 +98,11 @@ function App() {
       headers: {"content-type":"application/json"},
       body: JSON.stringify({weight: weight, reps: reps})
     })
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.error);
+      return;
+    }
     const targetSession = sessions.find(s => s.id === currentSessionId);
     const newSet = await response.json();
     const updatedExercises = targetSession.exercises.map(exercise =>
@@ -98,9 +118,14 @@ function App() {
   }
 
   async function handleDeleteSet(exerciseId, setId) {
-    await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets/${setId}`, {
+    const response = await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets/${setId}`, {
       method: "DELETE"
     });
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.error);
+      return;
+    }
     const targetSession = sessions.find(s => s.id === currentSessionId);
     const updatedExercises = targetSession.exercises.map(e => 
       e.id === exerciseId
