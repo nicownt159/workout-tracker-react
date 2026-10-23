@@ -1,6 +1,6 @@
 # Workout Tracker
 
-A small workout tracker built with React and Vite, ported from my vanilla JavaScript version to learn React fundamentals. It started out as a pure frontend app and has since grown into a small fullstack project: the React client talks to an Express API that stores the sessions in a JSON file on the server.
+A small workout tracker built with React and Vite, ported from my vanilla JavaScript version to learn React fundamentals. It started out as a pure frontend app and has since grown into a small fullstack project: the React client talks to an Express API that stores the sessions in a SQLite database on the server.
 
 ## Features
 
@@ -19,7 +19,7 @@ workout-tracker-react/
 ```
 
 - `client/` contains the React app. `App.jsx` holds the sessions state, loads it from the API with `GET /sessions` on mount and calls a dedicated route for every action (adding or deleting a session, exercise or set).
-- `server/` contains `server.js`, a small Express API that keeps the sessions in memory and writes them to `sessions.json`.
+- `server/` contains `server.js`, a small Express API that stores sessions, exercises and sets in a SQLite database (`workout.db`) using better-sqlite3.
 
 Frontend and server are separate projects with their own `package.json` and have to run at the same time.
 
@@ -36,6 +36,7 @@ Frontend and server are separate projects with their own `package.json` and have
 - Node.js
 - Express 5 (ES modules)
 - cors
+- SQLite with better-sqlite3
 
 ## How it works
 
@@ -44,7 +45,7 @@ Frontend and server are separate projects with their own `package.json` and have
 - When adding something, the client sends only the new values (`type`, `name` or `weight` and `reps`). The server assigns the `id` (and the `date` for sessions) and responds with the new object, which the client inserts into the state
 - When deleting something, the server responds with `204 No Content` and the client removes the item from the state
 - If the server answers with an error status, the client checks `response.ok`, shows the server's error message with `alert` and leaves the state unchanged. This applies to adding a session, exercise or set and to deleting an exercise or set. Deleting a session always gets a `204`, so that handler does not check the response
-- The server keeps the sessions in memory, writes them to `sessions.json` after every `POST` and `DELETE` and reads that file back in on startup
+- The server writes every `POST` and `DELETE` directly to the SQLite database and reads the sessions from it on every `GET /sessions`, so nothing is kept in memory between requests
 
 ## API
 
@@ -84,22 +85,37 @@ In the frontend, weight and reps are `number` inputs (`min="0.5"`/`step="0.5"` f
 
 ## Data storage
 
-The sessions are stored in `server/sessions.json`. The file is created automatically the first time a session is created, and it is listed in `server/.gitignore`, so it is not committed. The server reads and writes the file relative to its working directory, so start it from inside the `server` folder.
+The data is stored in a SQLite database in `server/workout.db`. The server uses better-sqlite3 to access it. The file and the tables are created automatically on the first server start (`CREATE TABLE IF NOT EXISTS`), and `workout.db` is listed in `.gitignore`, so it is not committed. The server opens the file relative to its working directory, so start it from inside the `server` folder.
 
-Data structure:
+The database has three tables:
+
+| Table       | Columns                               |
+| ----------- | ------------------------------------- |
+| `sessions`  | `id`, `type`, `date`                  |
+| `exercises` | `id`, `session_id`, `name`            |
+| `sets`      | `id`, `exercise_id`, `weight`, `reps` |
+
+- `exercises.session_id` references `sessions.id` and `sets.exercise_id` references `exercises.id`. Both are foreign keys with `ON DELETE CASCADE`, so deleting a session also deletes its exercises, and deleting an exercise also deletes its sets
+- `id` values are assigned by SQLite (`INTEGER PRIMARY KEY`). After an `INSERT` the server reads the new `id` from `lastInsertRowid` and returns it in the response
+- `date` is the day the session was created in `YYYY-MM-DD` format
+- `weight` is stored as `REAL` and `reps` as `INTEGER`. The server converts them with `Number()` before saving
+- All queries are prepared statements with `?` placeholders, so values from the request are never inserted into the SQL string directly
+
+`GET /sessions` reads the three tables and puts the nested structure back together: for every session it loads the exercises with that `session_id`, and for every exercise the sets with that `exercise_id`. The response looks like this:
 
 ```json
 [
   {
-    "id": 1700000000000,
+    "id": 1,
     "type": "Push",
     "date": "2026-09-29",
     "exercises": [
       {
-        "id": 1700000000001,
+        "id": 1,
+        "session_id": 1,
         "name": "Bench Press",
         "sets": [
-          { "id": 1700000000002, "weight": 80, "reps": 8 }
+          { "id": 1, "exercise_id": 1, "weight": 80, "reps": 8 }
         ]
       }
     ]
@@ -107,9 +123,7 @@ Data structure:
 ]
 ```
 
-- `id` values are timestamps from `Date.now()`
-- `date` is the day the session was created in `YYYY-MM-DD` format
-- `weight` and `reps` are stored as numbers. The server converts them with `Number()` before saving
+Because the rows are read with `SELECT *`, exercises and sets in this response also contain their foreign key (`session_id` or `exercise_id`). The `POST` routes return the new object without it. The client does not use these fields.
 
 ## What I learned
 
@@ -126,6 +140,10 @@ Data structure:
 - Validating input on the server instead of trusting the frontend
 - Responding with the right HTTP status codes for errors: `400 Bad Request` for invalid input, `404 Not Found` for missing resources
 - Checking `response.ok` in the client, because `fetch` does not throw on error status codes
+- SQL basics: `CREATE TABLE`, `INSERT`, `SELECT`, `WHERE`, `AND` and `DELETE`
+- Prepared statements with `?` placeholders to protect against SQL injection
+- Foreign keys with `ON DELETE CASCADE`, so related rows are deleted automatically
+- Putting nested data from several tables back together for a single API response
 
 ## How to run locally
 
