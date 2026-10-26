@@ -1,11 +1,14 @@
 import express from "express";
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import path from "path";
 
 const app = express();
-const db = new Database(process.env.DB_PATH || path.join(import.meta.dirname, "workout.db"));
+const db = createClient({
+    url: process.env.TURSO_DATABASE_URL || `file:${path.join(import.meta.dirname, "workout.db")}`,
+    authToken: process.env.TURSO_AUTH_TOKEN
+});
 
-db.exec(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY,
     type TEXT NOT NULL,
@@ -13,7 +16,7 @@ db.exec(`
   )
 `);
 
-db.exec(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS exercises (
     id INTEGER PRIMARY KEY,
     session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -21,7 +24,7 @@ db.exec(`
   )
 `);
 
-db.exec(`
+await db.execute(`
     CREATE TABLE IF NOT EXISTS sets (
     id INTEGER PRIMARY KEY,
     exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
@@ -35,14 +38,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(import.meta.dirname, "../client/dist")));
 
-app.post("/sessions", (req, res) => {
+app.post("/sessions", async (req, res) => {
     if (typeof req.body.type !== "string" || req.body.type.trim() === "") {
         return res.status(400).json({ error: "Type is required" });
     }
     const date = new Date().toISOString().slice(0, 10);
-    const result = db.prepare("INSERT INTO sessions (type, date) VALUES (?, ?)").run(req.body.type, date);
+    const result = await db.execute({
+        sql: "INSERT INTO sessions (type, date) VALUES (?, ?)",
+        args: [req.body.type, date]
+    });
     const newSession = {
-        id: result.lastInsertRowid,
+        id: Number(result.lastInsertRowid),
         type: req.body.type,
         date,
         exercises: []
@@ -50,96 +56,145 @@ app.post("/sessions", (req, res) => {
     res.json(newSession);
 });
 
-app.delete("/sessions/:id", (req, res) => {
+app.delete("/sessions/:id", async (req, res) => {
     const id = Number(req.params.id);
-    db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
+    await db.batch([
+        { sql: "DELETE FROM sets WHERE exercise_id IN (SELECT id FROM exercises WHERE session_id = ?)", args: [id] },
+        { sql: "DELETE FROM exercises WHERE session_id = ?", args: [id] },
+        { sql: "DELETE FROM sessions WHERE id = ?", args: [id] }
+    ]);
     res.sendStatus(204);
 });
 
-app.post("/sessions/:sessionId/exercises", (req, res) => {
+app.post("/sessions/:sessionId/exercises", async (req, res) => {
     const sessionId = Number(req.params.sessionId);
-    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId);
+    const sessionResult = await db.execute({
+        sql: "SELECT * FROM sessions WHERE id = ?",
+        args: [sessionId]
+    });
+    const session = sessionResult.rows[0];
     if (!session) {
-        return res.status(404).json({ error: "Session not found" })
+        return res.status(404).json({ error: "Session not found" });
     }
-    if(typeof req.body.name !== "string" || req.body.name.trim() === "") {
+    if (typeof req.body.name !== "string" || req.body.name.trim() === "") {
         return res.status(400).json({ error: "Name is required" });
     }
-    const result = db.prepare("INSERT INTO exercises (session_id, name) VALUES (?, ?)").run(sessionId, req.body.name)
+    const result = await db.execute({
+        sql: "INSERT INTO exercises (session_id, name) VALUES (?, ?)",
+        args: [sessionId, req.body.name]
+    });
     const newExercise = {
-        id: result.lastInsertRowid,
+        id: Number(result.lastInsertRowid),
         name: req.body.name,
         sets: []
-    }
+    };
     res.json(newExercise);
 });
 
-app.delete("/sessions/:sessionId/exercises/:exerciseId", (req, res) => {
+app.delete("/sessions/:sessionId/exercises/:exerciseId", async (req, res) => {
     const sessionId = Number(req.params.sessionId);
-    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId);
+    const sessionResult = await db.execute({
+        sql: "SELECT * FROM sessions WHERE id = ?",
+        args: [sessionId]
+    });
+    const session = sessionResult.rows[0];
     if (!session) {
-        return res.status(404).json({ error: "Session not found" })
+        return res.status(404).json({ error: "Session not found" });
     }
     const exerciseId = Number(req.params.exerciseId);
-    db.prepare("DELETE FROM exercises WHERE id = ? AND session_id = ?").run(exerciseId, sessionId);
-    res.sendStatus(204)
+    await db.batch([
+        { sql: "DELETE FROM sets WHERE exercise_id IN (SELECT id FROM exercises WHERE id = ? AND session_id = ?)", args: [exerciseId, sessionId] },
+        { sql: "DELETE FROM exercises WHERE id = ? AND session_id = ?", args: [exerciseId, sessionId] }
+    ]);
+    res.sendStatus(204);
 });
 
-app.post("/sessions/:sessionId/exercises/:exerciseId/sets", (req, res) => {
+app.post("/sessions/:sessionId/exercises/:exerciseId/sets", async (req, res) => {
     const sessionId = Number(req.params.sessionId);
-    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId);
+    const sessionResult = await db.execute({
+        sql: "SELECT * FROM sessions WHERE id = ?",
+        args: [sessionId]
+    });
+    const session = sessionResult.rows[0];
     if (!session) {
-        return res.status(404).json({ error: "Session not found" })
+        return res.status(404).json({ error: "Session not found" });
     }
     const exerciseId = Number(req.params.exerciseId);
-    const exercise = db.prepare("SELECT * FROM exercises WHERE id = ? AND session_id = ?").get(exerciseId, sessionId);
+    const exerciseResult = await db.execute({
+        sql: "SELECT * FROM exercises WHERE id = ? AND session_id = ?",
+        args: [exerciseId, sessionId]
+    });
+    const exercise = exerciseResult.rows[0];
     if (!exercise) {
-        return res.status(404).json({ error: "Exercise not found" })
+        return res.status(404).json({ error: "Exercise not found" });
     }
     const weight = Number(req.body.weight);
     const reps = Number(req.body.reps);
-    if(Number.isNaN(weight) || weight <= 0) {
+    if (Number.isNaN(weight) || weight <= 0) {
         return res.status(400).json({ error: "Weight must be a positive number" });
     }
-    if(!Number.isInteger(reps) || reps <= 0) {
+    if (!Number.isInteger(reps) || reps <= 0) {
         return res.status(400).json({ error: "Reps must be a positive whole number" });
     }
-    const result = db.prepare("INSERT INTO sets (exercise_id, weight, reps) VALUES (?, ?, ?)").run(exerciseId, weight, reps);
+    const result = await db.execute({
+        sql: "INSERT INTO sets (exercise_id, weight, reps) VALUES (?, ?, ?)",
+        args: [exerciseId, weight, reps]
+    });
     const newSet = {
-        id: result.lastInsertRowid,
+        id: Number(result.lastInsertRowid),
         weight,
         reps
-    }
+    };
     res.json(newSet);
 });
 
-app.delete("/sessions/:sessionId/exercises/:exerciseId/sets/:setId", (req, res) => {
+app.delete("/sessions/:sessionId/exercises/:exerciseId/sets/:setId", async (req, res) => {
     const sessionId = Number(req.params.sessionId);
-    const session = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId);
+    const sessionResult = await db.execute({
+        sql: "SELECT * FROM sessions WHERE id = ?",
+        args: [sessionId]
+    });
+    const session = sessionResult.rows[0];
     if (!session) {
-        return res.status(404).json({ error: "Session not found" })
+        return res.status(404).json({ error: "Session not found" });
     }
     const exerciseId = Number(req.params.exerciseId);
-    const exercise = db.prepare("SELECT * FROM exercises WHERE id = ? AND session_id = ?").get(exerciseId, sessionId);
+    const exerciseResult = await db.execute({
+        sql: "SELECT * FROM exercises WHERE id = ? AND session_id = ?",
+        args: [exerciseId, sessionId]
+    });
+    const exercise = exerciseResult.rows[0];
     if (!exercise) {
-        return res.status(404).json({ error: "Exercise not found" })
+        return res.status(404).json({ error: "Exercise not found" });
     }
     const setId = Number(req.params.setId);
-    db.prepare("DELETE FROM sets WHERE id = ? AND exercise_id = ?").run(setId, exerciseId)
-    res.sendStatus(204)
-})
+    await db.execute({
+        sql: "DELETE FROM sets WHERE id = ? AND exercise_id = ?",
+        args: [setId, exerciseId]
+    });
+    res.sendStatus(204);
+});
 
-app.get("/sessions", (req, res) => {
-    const sessionRows = db.prepare("SELECT * FROM sessions").all();
-    const fullSessions = sessionRows.map(session => ({
-        ...session,
-        exercises: db.prepare("SELECT * FROM exercises WHERE session_id = ?").all(session.id).map(exercise => ({
-            ...exercise,
-            sets: db.prepare("SELECT * FROM sets WHERE exercise_id = ?").all(exercise.id)
-        }))
+app.get("/sessions", async (req, res) => {
+    const sessionResult = await db.execute("SELECT * FROM sessions");
+    const exerciseResult = await db.execute("SELECT * FROM exercises");
+    const setResult = await db.execute("SELECT * FROM sets");
+    const fullSessions = sessionResult.rows.map(session => ({
+        id: session.id,
+        type: session.type,
+        date: session.date,
+        exercises: exerciseResult.rows
+            .filter(exercise => exercise.session_id === session.id)
+            .map(exercise => ({
+                id: exercise.id,
+                name: exercise.name,
+                sets: setResult.rows
+                    .filter(set => set.exercise_id === exercise.id)
+                    .map(set => ({ id: set.id, weight: set.weight, reps: set.reps }))
+            }))
     }));
     res.json(fullSessions);
-})
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on localhost:${PORT}`);
