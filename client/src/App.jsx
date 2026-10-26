@@ -13,7 +13,7 @@ function App() {
 
   useEffect(() => {
     async function loadSessions() {
-      const response = await fetch("http://localhost:3000/sessions");
+      const response = await fetch("/sessions");
       const data = await response.json();
 
       setSessions(data);
@@ -25,7 +25,7 @@ function App() {
     if (typeInput.trim() === "") {
       return
     }
-    const response = await fetch("http://localhost:3000/sessions", {
+    const response = await fetch("/sessions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({type: typeInput})
@@ -41,7 +41,7 @@ function App() {
   }
 
   async function handleDeleteSession(id) {
-    await fetch(`http://localhost:3000/sessions/${id}`, {
+    await fetch(`/sessions/${id}`, {
       method: "DELETE"
     })
     setSessions(sessions.filter(s => s.id !== id));
@@ -52,7 +52,7 @@ function App() {
   }
 
   async function handleAddExercise(sessionId, name) {
-    const response = await fetch(`http://localhost:3000/sessions/${sessionId}/exercises`, {
+    const response = await fetch(`/sessions/${sessionId}/exercises`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name })
@@ -72,7 +72,7 @@ function App() {
   }
 
   async function handleDeleteExercise(sessionId, exerciseId) {
-    const response = await fetch(`http://localhost:3000/sessions/${sessionId}/exercises/${exerciseId}`, {
+    const response = await fetch(`/sessions/${sessionId}/exercises/${exerciseId}`, {
       method: "DELETE"
     });
     if (!response.ok) {
@@ -94,7 +94,7 @@ function App() {
   }
 
   async function handleAddSet(exerciseId, weight, reps) {
-    const response = await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets`, {
+    const response = await fetch(`/sessions/${currentSessionId}/exercises/${exerciseId}/sets`, {
       method: "POST",
       headers: {"content-type":"application/json"},
       body: JSON.stringify({weight: weight, reps: reps})
@@ -120,7 +120,7 @@ function App() {
   }
 
   async function handleDeleteSet(exerciseId, setId) {
-    const response = await fetch(`http://localhost:3000/sessions/${currentSessionId}/exercises/${exerciseId}/sets/${setId}`, {
+    const response = await fetch(`/sessions/${currentSessionId}/exercises/${exerciseId}/sets/${setId}`, {
       method: "DELETE"
     });
     if (!response.ok) {

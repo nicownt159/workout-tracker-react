@@ -1,9 +1,9 @@
 import express from "express";
-import cors from "cors";
 import Database from "better-sqlite3";
+import path from "path";
 
 const app = express();
-const db = new Database("workout.db");
+const db = new Database(process.env.DB_PATH || path.join(import.meta.dirname, "workout.db"));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
@@ -30,10 +30,10 @@ db.exec(`
     )
 `);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cors());
+app.use(express.static(path.join(import.meta.dirname, "../client/dist")));
 
 app.post("/sessions", (req, res) => {
     if (typeof req.body.type !== "string" || req.body.type.trim() === "") {
@@ -128,10 +128,6 @@ app.delete("/sessions/:sessionId/exercises/:exerciseId/sets/:setId", (req, res) 
     db.prepare("DELETE FROM sets WHERE id = ? AND exercise_id = ?").run(setId, exerciseId)
     res.sendStatus(204)
 })
-
-app.get("/", (req, res) => {
-    res.send("Workout Tracker API");
-});
 
 app.get("/sessions", (req, res) => {
     const sessionRows = db.prepare("SELECT * FROM sessions").all();
